@@ -22,6 +22,16 @@ add_custom_command(
     && echo ""
 )
 
+# add the example template
+add_subdirectory( template )
+add_custom_command(
+  OUTPUT run-all-examples-cmd APPEND
+  COMMAND
+    echo "- example_template ----------------" &&
+    "${CMAKE_CURRENT_BINARY_DIR}/template/example_template${CMAKE_EXECUTABLE_SUFFIX}"
+    && echo ""
+)
+
 # add the eigenvalues example
 add_subdirectory( eigenvalues )
 add_custom_command(
