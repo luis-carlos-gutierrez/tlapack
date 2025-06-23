@@ -78,8 +78,8 @@ void run(size_t m, size_t n, size_t k)
     // Declacre matrices
     std::vector<T> A_;
     auto A = new_matrix(A_, m, n);
-    std::vector<T> Aaug_copy_;
-    auto Aaug_copy = new_matrix(Aaug_copy_, m + n, n);
+    std::vector<T> A_copy_;
+    auto A_copy = new_matrix(A_copy_, m, n);
     std::vector<T> AQR_;
     auto AQR = new_matrix(AQR_, m, n);
     std::vector<T> AHH_;
@@ -109,7 +109,7 @@ void run(size_t m, size_t n, size_t k)
     std::vector<T> tau_;
     auto tau = new_vector(tau_, std::min(m, n));
     std::vector<T> baug_;
-    auto baug = new_matrix(baug_, m + n, k);
+    auto baug = new_vector(baug_, m + n);
 
     // FIX LATER?: Initialize ALL matrices/vectors to zero?
     // Ask Julien ^
@@ -120,17 +120,18 @@ void run(size_t m, size_t n, size_t k)
     // std::string option = "QR";
     // std::string option = "SVD0";
     // std::string option = "SVD1";
-    // std::string option = "SVD2";
-    std::string option = "Tikhonov";
+    std::string option = "SVD2";
+    // std::string option = "Tikhonov";
 
     // Initializing A randomly
     mm.random(A);
 
     // Create a copy of A for the check
+    lacpy(GENERAL, A, A_copy);
 
     if (verbose) {
-        std::cout << std::endl << "Aaug_copy (randomly initialized)";
-        printMatrix(Aaug_copy);
+        std::cout << std::endl << "A_copy (randomly initialized)";
+        printMatrix(A_copy);
         std::cout << std::endl;
     }
 
@@ -442,83 +443,27 @@ void run(size_t m, size_t n, size_t k)
     }
     else {  // option == Tiknonov
         // Begin tikhonov regularization
-        std::cout
-            << "\n\nUsing Tikhonov Regularization to solve Lsq Problem:\n";
+        std::cout << std::endl
+                  << "Using Tikhonov Regularization to solve Lsq Problem:"
+                  << std::endl;
 
-        // Initialize Gamma = alpha*I
-        real_t alpha(97);
-        laset(GENERAL, real_t(0), alpha, Gamma);
+        // Initialize Gamma
+        // type_t gammaScal;
+        // for(idx_t
+    }  // End of Tikhonov Regularization routine
 
-        if (verbose) {
-            std::cout << "\nGamma =\n";
-            printMatrix(Gamma);
-        }
-
-        // Augment Gamma onto A
-        auto Aaug_top = slice(Aaug, range{0, m}, range{0, n});
-        auto Aaug_bottom = slice(Aaug, range{m, m + n}, range{0, n});
-        lacpy(GENERAL, A, Aaug_top);
-        lacpy(GENERAL, Gamma, Aaug_bottom);
-
-        if (verbose) {
-            std::cout << "\n\nAaug =\n";
-            printMatrix(Aaug);
-        }
-
-        // Augment zeros onto b
-        std::vector<T> zeros_;
-        auto zeros = new_matrix(zeros_, n, k);
-        laset(GENERAL, real_t(0), real_t(0), zeros);
-
-        auto baug_top = slice(baug, range{0, m}, range{0, k});
-        auto baug_bottom = slice(baug, range{m, m + n}, range{0, k});
-
-        lacpy(GENERAL, b, baug_top);
-        lacpy(GENERAL, zeros, baug_bottom);
-
-        if (verbose) {
-            std::cout << "\n\nbaug =\n";
-            printMatrix(baug);
-        }
-
-        lacpy(GENERAL, Aaug, Aaug_copy);
-
-        // Factor A into A = Q * R (QR factorization stored compactly in AHH and
-        // tau)
-
-        // AHH -> Aaug
-        geqrf(Aaug, tau);
-
-        // Apply Q^H to b using the compact QR representation
-        std::vector<T> xHat2_;
-        auto xHat2 = new_matrix(xHat2_, m + n, k);
-
-        lacpy(GENERAL, baug, xHat2);
-        unmqr(LEFT_SIDE, CONJ_TRANS, Aaug, tau, xHat2);
-
-        // Extract upper triangular R from Aaug
-        lacpy(UPPER_TRIANGLE, slice(Aaug, range{0, n}, range{0, n}), R);
-
-        // Keep only the first n rows of Q^H * b as xHat
-        lacpy(GENERAL, slice(xHat2, range{0, n}, range{0, k}), xHat);
-
-        // Solve R * xHat = Q^H * b (now in xHat)
-        trsm(LEFT_SIDE, UPPER_TRIANGLE, NO_TRANS, NON_UNIT_DIAG, real_t(1), R,
-             xHat);
-
-        // End of Tikhonov Regularization routine
-    }
     // Check to see if Lsq regression was implemented succesfully
 
     ///////////////////////////// check starts her ////////////////////
 
-    std::cout << "\n\nCheck to see if Lsq solved succesfully using " << option
-              << " method:\n";
+    std::cout << std::endl
+              << "Check to see if Lsq solved succesfully using " << option
+              << " method:" << std::endl;
 
     // lacpy(GENERAL, A_copy, A);
 
-    // Compute baug - Aaug *xHat
-    gemm(NO_TRANS, NO_TRANS, real_t(-1), Aaug_copy, xHat, real_t(1), baug);
+    // Compute b - A *xHat
+    gemm(NO_TRANS, NO_TRANS, real_t(-1), A_copy, xHat, real_t(1), b);
 
     if (verbose) {
         std::cout << std::endl << "r =";
@@ -526,22 +471,24 @@ void run(size_t m, size_t n, size_t k)
         std::cout << std::endl;
     }
 
-    // Compute Aaug.H*(baug - Aaug*xHat)
+    // Compute A.H*(b - A xHat)
     // FIX LATER?: beta = real_t(0)
-    gemm(CONJ_TRANS, NO_TRANS, real_t(1), Aaug_copy, baug, real_t(0), y);
+    gemm(CONJ_TRANS, NO_TRANS, real_t(1), A_copy, b, real_t(0), y);
 
     if (verbose) {
-        std::cout << std::endl << "Aaug.H*(baug - Aaug*xHat) =";
+        std::cout << std::endl << "A.H*(b - bHat) =";
         printMatrix(y);
         std::cout << std::endl;
     }
 
     double dotProdNorm = lange(FROB_NORM, y);
 
-    double normAcopy = lange(FROB_NORM, Aaug_copy);
+    double normAcopy = lange(FROB_NORM, A_copy);
+
+    double normb = lange(FROB_NORM, b);
 
     std::cout << std::endl
-              << "(||Aaug.H*(baug - Aaug*xHat)||_F) / (||A||_F) = " << std::endl
+              << "(||A.H*(b - bHat)||_F) / (||A||_F) = " << std::endl
               << (dotProdNorm / normAcopy) << std::endl;
 }
 
@@ -558,7 +505,7 @@ int main(int argc, char** argv)
     // Default arguments
     m = 3;
     n = 2;
-    k = 5;
+    k = 10;
 
     srand(3);  // Init random seed
 

@@ -32,6 +32,17 @@ add_custom_command(
     && echo ""
 )
 
+# add the example least_squares
+add_subdirectory( least_squares )
+add_custom_command(
+  OUTPUT run-all-examples-cmd APPEND
+  COMMAND
+    echo "- example_least_squares ----------------" &&
+    "${CMAKE_CURRENT_BINARY_DIR}/least_squares/example_least_squares${CMAKE_EXECUTABLE_SUFFIX}"
+    && echo ""
+)
+
+
 # add the eigenvalues example
 add_subdirectory( eigenvalues )
 add_custom_command(
