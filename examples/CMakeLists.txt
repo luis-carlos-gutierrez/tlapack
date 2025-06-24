@@ -32,6 +32,17 @@ add_custom_command(
     && echo ""
 )
 
+# add the example tikhonov_regularization_2
+add_subdirectory( tikhonov_regularization_2 )
+add_custom_command(
+  OUTPUT run-all-examples-cmd APPEND
+  COMMAND
+    echo "- example_tikhonov_regularization ----------------" &&
+    "${CMAKE_CURRENT_BINARY_DIR}/tikhonov_regularization_2/example_tikhonov_regularization_2${CMAKE_EXECUTABLE_SUFFIX}"
+    && echo ""
+)
+
+
 # add the example least_squares
 add_subdirectory( least_squares )
 add_custom_command(

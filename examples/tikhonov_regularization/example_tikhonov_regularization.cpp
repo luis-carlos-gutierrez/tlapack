@@ -64,7 +64,7 @@ void run(size_t m, size_t n, size_t k)
     using matrix_t = tlapack::LegacyMatrix<T>;
     using idx_t = tlapack::size_type<matrix_t>;
     using vector_t = tlapack::LegacyVector<T>;
-    using type_t = tlapack::type_t<T>;
+    using scalar_t = tlapack::scalar_type<T>;
 
     using range = pair<idx_t, idx_t>;
 
@@ -73,11 +73,13 @@ void run(size_t m, size_t n, size_t k)
     tlapack::Create<vector_t> new_vector;
 
     // Turn it off if m or n are large
-    bool verbose = true;
+    bool verbose = false;
 
     // Declacre matrices
     std::vector<T> A_;
     auto A = new_matrix(A_, m, n);
+    std::vector<T> A_copy_;
+    auto A_copy = new_matrix(A_copy_, m, n);
     std::vector<T> Aaug_copy_;
     auto Aaug_copy = new_matrix(Aaug_copy_, m + n, n);
     std::vector<T> AQR_;
@@ -102,6 +104,8 @@ void run(size_t m, size_t n, size_t k)
     auto xHat = new_matrix(xHat_, n, k);
     std::vector<T> b_;
     auto b = new_matrix(b_, m, k);
+    std::vector<T> b_copy_;
+    auto b_copy = new_matrix(b_copy_, m, k);
     std::vector<T> bHat_;
     auto bHat = new_matrix(bHat_, m, 1);
     std::vector<T> y_;
@@ -110,6 +114,9 @@ void run(size_t m, size_t n, size_t k)
     auto tau = new_vector(tau_, std::min(m, n));
     std::vector<T> baug_;
     auto baug = new_matrix(baug_, m + n, k);
+
+    // FIX LATER: Put lambda in a better spot
+    scalar_t lambda(17);
 
     // FIX LATER?: Initialize ALL matrices/vectors to zero?
     // Ask Julien ^
@@ -121,16 +128,22 @@ void run(size_t m, size_t n, size_t k)
     // std::string option = "SVD0";
     // std::string option = "SVD1";
     // std::string option = "SVD2";
-    std::string option = "Tikhonov";
+    // std::string option = "Tikhonov1";
+    // std::string option = "Tikhonov2";
+    std::string option = "TikSVD";
 
     // Initializing A randomly
     mm.random(A);
 
     // Create a copy of A for the check
+    lacpy(GENERAL, A, A_copy);
+
+    // Create a copy of b for the check
+    lacpy(GENERAL, b, b_copy);
 
     if (verbose) {
-        std::cout << std::endl << "Aaug_copy (randomly initialized)";
-        printMatrix(Aaug_copy);
+        std::cout << std::endl << "A (randomly initialized)";
+        printMatrix(A);
         std::cout << std::endl;
     }
 
@@ -423,6 +436,7 @@ void run(size_t m, size_t n, size_t k)
         gemm(CONJ_TRANS, NO_TRANS, real_t(1), Q2, xHat, real_t(0), xHat2);
 
         // Scale each row by 1/d[j]
+        // This is what I need to change in order to do tik svd
         for (idx_t j = 0; j < n; ++j)
             for (idx_t i = 0; i < k; ++i)
                 xHat2(j, i) /= d[j];
@@ -440,12 +454,14 @@ void run(size_t m, size_t n, size_t k)
         // Final result
         lacpy(GENERAL, xHat4, xHat);
     }
-    else {  // option == Tiknonov
+    else if (option == "Tikhonov1") {
         // Begin tikhonov regularization
+
         std::cout
             << "\n\nUsing Tikhonov Regularization to solve Lsq Problem:\n";
 
         // Initialize Gamma = alpha*I
+        // FIX LATER: real_t -> scalar_t
         real_t alpha(97);
         laset(GENERAL, real_t(0), alpha, Gamma);
 
@@ -465,6 +481,9 @@ void run(size_t m, size_t n, size_t k)
             printMatrix(Aaug);
         }
 
+        // Create a copy of Aaug for the check
+        lacpy(GENERAL, Aaug, Aaug_copy);
+
         // Augment zeros onto b
         std::vector<T> zeros_;
         auto zeros = new_matrix(zeros_, n, k);
@@ -480,8 +499,6 @@ void run(size_t m, size_t n, size_t k)
             std::cout << "\n\nbaug =\n";
             printMatrix(baug);
         }
-
-        lacpy(GENERAL, Aaug, Aaug_copy);
 
         // Factor A into A = Q * R (QR factorization stored compactly in AHH and
         // tau)
@@ -508,41 +525,220 @@ void run(size_t m, size_t n, size_t k)
 
         // End of Tikhonov Regularization routine
     }
+    else if (option == "Tikhonov2") {
+        // Step 1: HERK
+        herk(UPPER_TRIANGLE, CONJ_TRANS, real_t(1), A, H);
+
+        if (verbose) {
+            std::cout << "\nA.H*A =\n";
+            printMatrix(H);
+        }
+
+        // Step 2: GEMM
+        gemm(CONJ_TRANS, NO_TRANS, real_t(1), A, b, xHat);
+
+        // Step 3: A.H*A + (lambda^2)*I
+        for (idx_t j = 0; j < n; j++)
+            H(j, j) += lambda * lambda;
+
+        if (verbose) {
+            std::cout << "\nA.H*A + (lambda^2)*I =\n";
+            printMatrix(H);
+        }
+
+        // Step 4: POTRF
+        // U -> H
+        potrf(UPPER_TRIANGLE, H);
+
+        // Step 5: TRSM
+        trsm(LEFT_SIDE, UPPER_TRIANGLE, CONJ_TRANS, NON_UNIT_DIAG, real_t(1), H,
+             xHat);
+
+        // Step 6: TRSM
+        trsm(LEFT_SIDE, UPPER_TRIANGLE, NO_TRANS, NON_UNIT_DIAG, real_t(1), H,
+             xHat);
+    }
+    else if (option == "TikSVD") {
+        std::vector<T> tauv(n);
+        std::vector<T> tauw(n);
+
+        std::vector<T> Q1_;
+        auto Q1 = new_matrix(Q1_, m, n);
+        std::vector<T> P1_;
+        auto P1 = new_matrix(P1_, n, n);
+
+        // Bidiagonal decomposition
+        bidiag(A, tauv, tauw);
+
+        // Reconstruct Q1 and P1
+        lacpy(LOWER_TRIANGLE, slice(A, range{0, m}, range{0, n}), Q1);
+        ungbr_q(n, Q1, tauv);
+
+        lacpy(UPPER_TRIANGLE, slice(A, range{0, n}, range{0, n}), P1);
+        ungbr_p(n, P1, tauw);
+
+        // Extract diagonal and superdiagonal
+        std::vector<real_t> d(n);
+        std::vector<real_t> e(n - 1);
+        for (idx_t j = 0; j < n; ++j)
+            d[j] = real(A(j, j));
+        for (idx_t j = 0; j < n - 1; ++j)
+            e[j] = real(A(j, j + 1));
+
+        // Allocate Q2 and P2t
+        std::vector<T> Q2_;
+        auto Q2 = new_matrix(Q2_, n, n);
+        std::vector<T> P2t_;
+        auto P2t = new_matrix(P2t_, n, n);
+        const real_t zero(0);
+        const real_t one(1);
+        laset(Uplo::General, zero, one, Q2);
+        laset(Uplo::General, zero, one, P2t);
+
+        // Apply Q1ᵀ to b using unmqr
+        std::vector<T> btmp1_;
+        auto btmp1 = new_matrix(btmp1_, m, k);
+        lacpy(GENERAL, b, btmp1);
+        unmqr(LEFT_SIDE, CONJ_TRANS, A, tauv, btmp1);
+
+        // Slice top n rows: Q1ᵀ b
+        lacpy(GENERAL, slice(btmp1, range{0, n}, range{0, k}), xHat);
+
+        // Apply Q2ᵀ
+        std::vector<T> xHat2_;
+        auto xHat2 = new_matrix(xHat2_, n, k);
+        int err = svd_qr(Uplo::Upper, true, true, d, e, Q2, P2t);
+        gemm(CONJ_TRANS, NO_TRANS, real_t(1), Q2, xHat, real_t(0), xHat2);
+
+        // This is what was changed from svd2 in order to do tik svd
+        for (idx_t j = 0; j < n; ++j)
+            for (idx_t i = 0; i < k; ++i)
+                // xHat2(j, i) /= d[j];
+                xHat2(j, i) *= (d[j] / ((d[j] * d[j]) + (lambda * lambda)));
+
+        // Apply P2tᵀ
+        std::vector<T> xHat3_;
+        auto xHat3 = new_matrix(xHat3_, n, k);
+        gemm(CONJ_TRANS, NO_TRANS, real_t(1), P2t, xHat2, real_t(0), xHat3);
+
+        // Apply P1ᵀ
+        std::vector<T> xHat4_;
+        auto xHat4 = new_matrix(xHat4_, n, k);
+        gemm(CONJ_TRANS, NO_TRANS, real_t(1), P1, xHat3, real_t(0), xHat4);
+
+        // Final result
+        lacpy(GENERAL, xHat4, xHat);
+    }
+    else {
+        std::cout << "\nInvalid least square decomposition option\n";
+    }
     // Check to see if Lsq regression was implemented succesfully
 
-    ///////////////////////////// check starts her ////////////////////
+    // std::string checkOption = "check1";
+    // std::string checkOption = "check2";
+    std::string checkOption = "check3";
 
-    std::cout << "\n\nCheck to see if Lsq solved succesfully using " << option
-              << " method:\n";
+    ///////////////////////////// check starts here ////////////////////
 
-    // lacpy(GENERAL, A_copy, A);
+    std::cout
+        << "\n\nCheck to see if Lsq solved succesfully using decomposition: "
+        << option;
+    std::cout << "\n\nCheck method used is: " << checkOption << "\n";
 
-    // Compute baug - Aaug *xHat
-    gemm(NO_TRANS, NO_TRANS, real_t(-1), Aaug_copy, xHat, real_t(1), baug);
+    // FIX LATER: Use copies in checks properly
 
-    if (verbose) {
-        std::cout << std::endl << "r =";
-        printMatrix(b);
-        std::cout << std::endl;
+    if (checkOption == "check1") {
+        // Compute baug - Aaug *xHat
+        gemm(NO_TRANS, NO_TRANS, real_t(-1), Aaug_copy, xHat, real_t(1), baug);
+
+        if (verbose) {
+            std::cout << std::endl << "r =";
+            printMatrix(b);
+            std::cout << std::endl;
+        }
+
+        // Compute Aaug.H*(baug - Aaug*xHat)
+        // FIX LATER?: beta = real_t(0)
+        gemm(CONJ_TRANS, NO_TRANS, real_t(1), Aaug_copy, baug, y);
+
+        if (verbose) {
+            std::cout << std::endl << "Aaug.H*(baug - Aaug*xHat) =";
+            printMatrix(y);
+            std::cout << std::endl;
+        }
+
+        double dotProdNorm = lange(FROB_NORM, y);
+
+        double normAcopy = lange(FROB_NORM, Aaug_copy);
+
+        std::cout << std::endl
+                  << "(||Aaug.H*(baug - Aaug*xHat)||_F) / (||A||_F) = "
+                  << std::endl
+                  << (dotProdNorm / normAcopy) << std::endl;
     }
+    else if (checkOption == "check2") {
+        // Compute b - A *xHat
+        gemm(NO_TRANS, NO_TRANS, real_t(-1), A_copy, xHat, real_t(1), b);
 
-    // Compute Aaug.H*(baug - Aaug*xHat)
-    // FIX LATER?: beta = real_t(0)
-    gemm(CONJ_TRANS, NO_TRANS, real_t(1), Aaug_copy, baug, real_t(0), y);
+        if (verbose) {
+            std::cout << std::endl << "r =";
+            printMatrix(b);
+            std::cout << std::endl;
+        }
 
-    if (verbose) {
-        std::cout << std::endl << "Aaug.H*(baug - Aaug*xHat) =";
-        printMatrix(y);
-        std::cout << std::endl;
+        // Compute A.H*(b - A xHat)
+        gemm(CONJ_TRANS, NO_TRANS, real_t(1), A_copy, b, y);
+
+        if (verbose) {
+            std::cout << std::endl << "A.H*(b - bHat) =";
+            printMatrix(y);
+            std::cout << std::endl;
+        }
+
+        double dotProdNorm = lange(FROB_NORM, y);
+
+        double normAcopy = lange(FROB_NORM, A_copy);
+
+        std::cout << std::endl
+                  << "(||A.H*(b - bHat)||_F) / (||A||_F) = " << std::endl
+                  << (dotProdNorm / normAcopy) << std::endl;
     }
+    else if (checkOption == "check3") {
+        // Compute b - A *xHat -> b
+        gemm(NO_TRANS, NO_TRANS, real_t(-1), A_copy, xHat, real_t(1), b);
 
-    double dotProdNorm = lange(FROB_NORM, y);
+        if (verbose) {
+            std::cout << std::endl << "r =";
+            printMatrix(b);
+            std::cout << std::endl;
+        }
 
-    double normAcopy = lange(FROB_NORM, Aaug_copy);
+        // Compute A.H*(b - A xHat) -> y
+        gemm(CONJ_TRANS, NO_TRANS, real_t(1), A_copy, b, y);
 
-    std::cout << std::endl
-              << "(||Aaug.H*(baug - Aaug*xHat)||_F) / (||A||_F) = " << std::endl
-              << (dotProdNorm / normAcopy) << std::endl;
+        if (verbose) {
+            std::cout << std::endl << "A.H*(b - bHat) =";
+            printMatrix(y);
+            std::cout << std::endl;
+        }
+
+        // Compute A.H*(b - A xHat) - (lambda^2)*xHat -> y
+        for (idx_t j = 0; j < k; j++)
+            for (idx_t i = 0; i < n; i++)
+                y(i, j) -= (lambda) * (lambda)*xHat(i, j);
+
+        double dotProdNorm = lange(FROB_NORM, y);
+
+        double normAcopy = lange(FROB_NORM, A_copy);
+
+        std::cout << std::endl
+                  << "(||A.H*(b - bHat) - (lambda^2)*xHat||_F) / (||A||_F) = "
+                  << std::endl
+                  << (dotProdNorm / normAcopy) << std::endl;
+    }
+    else {
+        std::cout << "\n\nNo checkOption selected\n";
+    }
 }
 
 //------------------------------------------------------------------------------
