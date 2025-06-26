@@ -129,8 +129,8 @@ void run(size_t m, size_t n, size_t k)
     // std::string option = "SVD1";
     // std::string option = "SVD2";
     // std::string option = "Tikhonov1";
-    // std::string option = "Tikhonov2";
-    std::string option = "TikSVD";
+    std::string option = "Tikhonov2";
+    // std::string option = "TikSVD";
 
     // Initializing A randomly
     mm.random(A);
@@ -635,8 +635,8 @@ void run(size_t m, size_t n, size_t k)
     // Check to see if Lsq regression was implemented succesfully
 
     // std::string checkOption = "check1";
-    // std::string checkOption = "check2";
-    std::string checkOption = "check3";
+    std::string checkOption = "check2";
+    // std::string checkOption = "check3";
 
     ///////////////////////////// check starts here ////////////////////
 
