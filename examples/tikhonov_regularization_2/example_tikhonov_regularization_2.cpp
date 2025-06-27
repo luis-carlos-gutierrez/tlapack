@@ -67,7 +67,7 @@ void run(size_t m, size_t n, size_t k)
 
     // Choose tikhonov method to solve least squares
     std::string method;
-    int option = 4;
+    int option = 5;
 
     switch (option) {
         case 1:
@@ -81,6 +81,9 @@ void run(size_t m, size_t n, size_t k)
             break;
         case 4:
             method = "Tikhonov Bidiag";
+            break;
+        case 5:
+            method = "Tikhonov Special Bidiag";
             break;
         default:
             method = "No method chosen";
@@ -107,16 +110,33 @@ void run(size_t m, size_t n, size_t k)
     else if (method == "Tikhonov Bidiag") {
         std::vector<T> bcopy_;
         auto bcopy = new_matrix(bcopy_, m, k);
+
         lacpy(GENERAL, b, bcopy);
+
         tik_bidiag(A, b, lambda);
+
         lacpy(GENERAL, slice(b, range{0, n}, range{0, k}), x);
         lacpy(GENERAL, bcopy, b);
 
         tik_check(A_copy, b, lambda, x);
     }
     else if (method == "Tikhonov Special Bidiag") {
-        tik_special_bidiag(A, b, lambda, x);
+        std::vector<T> bcopy_;
+        auto bcopy = new_matrix(bcopy_, m, k);
+
+        lacpy(GENERAL, b, bcopy);
+
+        tik_special_bidiag(A, b, lambda);
+
+        lacpy(GENERAL, slice(b, range{0, n}, range{0, k}), x);
+        lacpy(GENERAL, bcopy, b);
+
         tik_check(A_copy, b, lambda, x);
+    }
+    //  maybe TODO
+    else if (method == "Tikhonov Special QR") {
+        // tik_special_bidiag(A, b, lambda, x);
+        // tik_check(A_copy, b, lambda, x);
     }
 }
 //------------------------------------------------------------------
@@ -125,9 +145,9 @@ int main(int argc, char** argv)
     int m, n, k;
 
     // Default arguments
-    m = 3;
-    n = 2;
-    k = 5;
+    m = 6;
+    n = 3;
+    k = 2;
 
     // Init random seed
     srand(3);
@@ -137,22 +157,22 @@ int main(int argc, char** argv)
     std::cout << std::scientific << std::showpos;
 
     // Execute run for different variable types
-    printf("----------------------------------------------------------\n");
-    printf("run< float  >( %d, %d, %d )", m, n, k);
-    run<float>(m, n, k);
-    printf("----------------------------------------------------------\n");
+    // printf("----------------------------------------------------------\n");
+    // printf("run< float  >( %d, %d, %d )", m, n, k);
+    // run<float>(m, n, k);
+    // printf("----------------------------------------------------------\n");
 
-    printf("run< double >( %d, %d, %d )", m, n, k);
-    run<double>(m, n, k);
-    printf("----------------------------------------------------------\n");
+    // printf("run< double >( %d, %d, %d )", m, n, k);
+    // run<double>(m, n, k);
+    // printf("----------------------------------------------------------\n");
 
-    printf("run< long double >( %d, %d, %d )", m, n, k);
-    run<long double>(m, n, k);
-    printf("----------------------------------------------------------\n");
+    // printf("run< long double >( %d, %d, %d )", m, n, k);
+    // run<long double>(m, n, k);
+    // printf("----------------------------------------------------------\n");
 
-    printf("run< complex<float> >( %d, %d, %d )", m, n, k);
-    run<std::complex<float>>(m, n, k);
-    printf("----------------------------------------------------------\n");
+    // printf("run< complex<float> >( %d, %d, %d )", m, n, k);
+    // run<std::complex<float>>(m, n, k);
+    // printf("----------------------------------------------------------\n");
 
     printf("run< complex<double> >( %d, %d, %d )", m, n, k);
     run<std::complex<double>>(m, n, k);

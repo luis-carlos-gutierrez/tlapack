@@ -58,15 +58,25 @@ void tik_bidiag(matrixA_t& A, matrixb_t& b, real_t lambda)
     for (idx_t j = 0; j < n - 1; j++)
         B(j, j + 1) = e[j];
 
+    // Step 4
     std::vector<T> y_;
     auto y = new_matrix(y_, n, k);
     // lacpy(GENERAL, x, y2);
     lacpy(GENERAL, x, y);
     tik_chol(B, y, lambda, x);
 
-    auto x2 = slice(x, range{1, n}, range{0, k});
-    unmlq(LEFT_SIDE, CONJ_TRANS, slice(A, range{1, n}, range{1, n}),
-          slice(tauw, range{0, n - 1}), x2);
+    // auto x2 = slice(x, range{1, n}, range{0, k});
+    // unmlq(LEFT_SIDE, CONJ_TRANS, slice(A, range{1, n}, range{1, n}),
+    //       slice(tauw, range{0, n - 1}), x2);
+
+    std::vector<T> P1_;
+    auto P1 = new_matrix(P1_, n, n);
+    lacpy(UPPER_TRIANGLE, slice(A, range{0, n}, range{0, n}), P1);
+    ungbr_p(n, P1, tauw);
+    std::vector<T> x4_;
+    auto x4 = new_matrix(x4_, n, k);
+    lacpy(GENERAL, x, x4);
+    gemm(CONJ_TRANS, NO_TRANS, real_t(1), P1, x4, real_t(0), x);
 }
 // TODO: understand if bidag() does A = QBP^T or A = QBP
 // TODO: understand Tikhonov algorithm with SVD (math behind it)

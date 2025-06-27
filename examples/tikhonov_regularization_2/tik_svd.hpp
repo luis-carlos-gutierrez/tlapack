@@ -6,20 +6,6 @@
 
 using namespace tlapack;
 
-template <typename matrix_t>
-void printMatrix(const matrix_t& A)
-{
-    using idx_t = tlapack::size_type<matrix_t>;
-    const idx_t m = tlapack::nrows(A);
-    const idx_t n = tlapack::ncols(A);
-
-    for (idx_t i = 0; i < m; ++i) {
-        std::cout << std::endl;
-        for (idx_t j = 0; j < n; ++j)
-            std::cout << A(i, j) << " ";
-    }
-}
-//------------------------------------------------------------------------------------
 template <TLAPACK_MATRIX matrixA_t,
           TLAPACK_MATRIX matrixb_t,
           TLAPACK_REAL real_t,
