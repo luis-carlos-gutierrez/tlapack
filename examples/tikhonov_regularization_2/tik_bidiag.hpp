@@ -36,7 +36,7 @@ void tik_bidiag(matrixA_t& A, matrixb_t& b, real_t lambda)
 
     auto x = slice(b, range{0, n}, range{0, k});
 
-    // Step 3: specialized Tikhonov on bidiagonal matrix
+    // Step 3: Tikhonov on bidiagonal matrix
 
     // Extract diagonal and superdiagonal
     std::vector<real_t> d(n);
@@ -72,10 +72,14 @@ void tik_bidiag(matrixA_t& A, matrixb_t& b, real_t lambda)
     std::vector<T> P1_;
     auto P1 = new_matrix(P1_, n, n);
     lacpy(UPPER_TRIANGLE, slice(A, range{0, n}, range{0, n}), P1);
+
     ungbr_p(n, P1, tauw);
+
     std::vector<T> x4_;
     auto x4 = new_matrix(x4_, n, k);
+
     lacpy(GENERAL, x, x4);
+
     gemm(CONJ_TRANS, NO_TRANS, real_t(1), P1, x4, real_t(0), x);
 }
 // TODO: understand if bidag() does A = QBP^T or A = QBP

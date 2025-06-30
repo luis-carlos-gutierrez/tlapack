@@ -13,8 +13,9 @@
 // lsq solver functions created for the example
 #include "tik_bidiag.hpp"
 // #include "tik_chol.hpp"
+#include "tik_bidiag_elden.hpp"
+#include "tik_bidiag_qr.hpp"
 #include "tik_naive.hpp"
-#include "tik_special_bidiag.hpp"
 #include "tik_svd.hpp"
 // <T>LAPACK
 #include <tlapack/blas/gemm.hpp>
@@ -67,7 +68,7 @@ void run(size_t m, size_t n, size_t k)
 
     // Choose tikhonov method to solve least squares
     std::string method;
-    int option = 5;
+    int option = 6;
 
     switch (option) {
         case 1:
@@ -83,7 +84,10 @@ void run(size_t m, size_t n, size_t k)
             method = "Tikhonov Bidiag";
             break;
         case 5:
-            method = "Tikhonov Special Bidiag";
+            method = "Tikhonov Bidiag Eldén";
+            break;
+        case 6:
+            method = "Tikhonov Bidiag QR";
             break;
         default:
             method = "No method chosen";
@@ -120,13 +124,13 @@ void run(size_t m, size_t n, size_t k)
 
         tik_check(A_copy, b, lambda, x);
     }
-    else if (method == "Tikhonov Special Bidiag") {
+    else if (method == "Tikhonov Bidiag Eldén") {
         std::vector<T> bcopy_;
         auto bcopy = new_matrix(bcopy_, m, k);
 
         lacpy(GENERAL, b, bcopy);
 
-        tik_special_bidiag(A, b, lambda);
+        tik_bidiag_elden(A, b, lambda);
 
         lacpy(GENERAL, slice(b, range{0, n}, range{0, k}), x);
         lacpy(GENERAL, bcopy, b);
@@ -134,9 +138,9 @@ void run(size_t m, size_t n, size_t k)
         tik_check(A_copy, b, lambda, x);
     }
     //  maybe TODO
-    else if (method == "Tikhonov Special QR") {
-        // tik_special_bidiag(A, b, lambda, x);
-        // tik_check(A_copy, b, lambda, x);
+    else if (method == "Tikhonov Bidiag QR") {
+        tik_bidiag_qr(A, b, lambda, x);
+        tik_check(A_copy, b, lambda, x);
     }
 }
 //------------------------------------------------------------------
@@ -145,7 +149,7 @@ int main(int argc, char** argv)
     int m, n, k;
 
     // Default arguments
-    m = 6;
+    m = 3;
     n = 3;
     k = 2;
 
@@ -162,9 +166,9 @@ int main(int argc, char** argv)
     // run<float>(m, n, k);
     // printf("----------------------------------------------------------\n");
 
-    // printf("run< double >( %d, %d, %d )", m, n, k);
-    // run<double>(m, n, k);
-    // printf("----------------------------------------------------------\n");
+    printf("run< double >( %d, %d, %d )", m, n, k);
+    run<double>(m, n, k);
+    printf("----------------------------------------------------------\n");
 
     // printf("run< long double >( %d, %d, %d )", m, n, k);
     // run<long double>(m, n, k);
