@@ -1,33 +1,14 @@
 #include <tlapack/plugins/legacyArray.hpp>
 
 #include "../../test/include/MatrixMarket.hpp"
-#include "tlapack/base/utils.hpp"
 
-// Utility functions created for the example
-// #include "init_aug_mtx_vect.hpp"
-
-// Check functions created for the example
+// Check function created for the example
 #include "tik_check.hpp"
-// #include "tik_check_naive.hpp"
 
-// lsq solver functions created for the example
-#include "tik_bidiag.hpp"
-// #include "tik_chol.hpp"
+// Least square solver functions created for the example
 #include "tik_bidiag_elden.hpp"
-#include "tik_bidiag_qr.hpp"
-#include "tik_naive.hpp"
 #include "tik_qr.hpp"
 #include "tik_svd.hpp"
-// <T>LAPACK
-#include <tlapack/blas/gemm.hpp>
-#include <tlapack/blas/herk.hpp>
-#include <tlapack/blas/trsm.hpp>
-#include <tlapack/lapack/geqrf.hpp>
-// #include <tlapack/lapack/lacpy.hpp>
-#include <tlapack/lapack/lange.hpp>
-#include <tlapack/lapack/laset.hpp>
-#include <tlapack/lapack/potrf.hpp>
-#include <tlapack/lapack/unmqr.hpp>
 
 using namespace tlapack;
 

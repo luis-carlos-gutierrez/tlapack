@@ -4,23 +4,6 @@
 
 using namespace tlapack;
 
-//------------------------------------------------------------------------------
-/// Print matrix A in the standard output
-template <typename matrix_t>
-void printMatrix(const matrix_t& A)
-{
-    using idx_t = tlapack::size_type<matrix_t>;
-    const idx_t m = tlapack::nrows(A);
-    const idx_t n = tlapack::ncols(A);
-
-    for (idx_t i = 0; i < m; ++i) {
-        std::cout << std::endl;
-        for (idx_t j = 0; j < n; ++j)
-            std::cout << A(i, j) << " ";
-    }
-}
-//------------------------------------------------------------------------------
-
 /// Solves tikhonov regularized least squares using QR factorization and
 /// elimination algorithm
 template <TLAPACK_MATRIX matrixA_t,
@@ -67,7 +50,7 @@ void tik_bidiag_qr(matrixA_t& A, matrixb_t& b, real_t lambda, matrixx_t& x)
     laset(GENERAL, real_t(0), lambda, Lower_Raug);
 
     std::cout << "\nRaug =\n";
-    printMatrix(Raug);
+    // printMatrix(Raug);
 
     std::vector<T> tau0_;
     auto tau0 = new_vector(tau0_, n);
@@ -90,5 +73,5 @@ void tik_bidiag_qr(matrixA_t& A, matrixb_t& b, real_t lambda, matrixx_t& x)
     }
 
     std::cout << "\nRaug Updated =\n";
-    printMatrix(Raug);
+    // printMatrix(Raug);
 }

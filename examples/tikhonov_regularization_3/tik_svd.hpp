@@ -1,8 +1,12 @@
+#ifndef TLAPACK_TIK_SVD
+#define TLAPACK_TIK_SVD
+
 #include <tlapack/lapack/bidiag.hpp>
+#include <tlapack/lapack/lange.hpp>
+#include <tlapack/lapack/laset.hpp>
 #include <tlapack/lapack/svd_qr.hpp>
 #include <tlapack/lapack/ungbr.hpp>
-
-#include "tlapack/base/utils.hpp"
+#include <tlapack/lapack/unmqr.hpp>
 
 using namespace tlapack;
 
@@ -108,3 +112,5 @@ void tik_svd(matrixA_t& A, matrixb_t& b, real_t lambda)
 
     lacpy(GENERAL, x4, x);
 }
+
+#endif  // TLAPACK_TIK_SVD
