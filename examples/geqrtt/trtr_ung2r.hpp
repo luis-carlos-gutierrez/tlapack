@@ -1,4 +1,4 @@
-/// @file trge_ung2r.hpp
+/// @file trtr_ung2r.hpp
 /// @author Julien Langou, L. Carlos Gutierrez, University of Colorado Denver,
 /// USA
 // Copyright (c) 2025, University of Colorado Denver. All rights reserved.
@@ -16,15 +16,15 @@
 //     for (idx_t i = j + 1; i < n; i++)
 //         A0(i, j) = real_t(0);
 
-#ifndef TLAPACK_TRGE_UNG2R_HH
-#define TLAPACK_TRGE_UNG2R_HH
+#ifndef TLAPACK_TRTR_UNG2R_HH
+#define TLAPACK_TRTR_UNG2R_HH
 
 #include "tlapack/base/utils.hpp"
 
 using namespace tlapack;
 
 template <TLAPACK_SMATRIX matrix_t, TLAPACK_VECTOR vector_t>
-void trge_ung2r(matrix_t& A0, matrix_t& A1, vector_t& tau)
+void trtr_ung2r(matrix_t& A0, matrix_t& A1, vector_t& tau)
 {
     using idx_t = size_type<matrix_t>;
     using range = pair<idx_t, idx_t>;
@@ -43,18 +43,19 @@ void trge_ung2r(matrix_t& A0, matrix_t& A1, vector_t& tau)
     auto view_block_A0 = slice(A0, range{0, n}, range{n, k});
     laset(GENERAL, real_t(0.0), real_t(0.0), view_block_A0);
 
-    auto view_block_A1 = slice(A1, range{0, m}, range{n, k});
+    // Initialize A1 to the identity
+    auto view_block_A1 = slice(A1, range{0, n}, range{n, k});
     laset(GENERAL, real_t(0.0), real_t(1.0), view_block_A1);
 
-    auto view_A1 = slice(A1, range{0, m}, n - 1);
+    auto view_A1 = slice(A1, range{0, n}, n - 1);
     auto view_A0 = slice(A0, n - 1, range{n, k});
 
-    std::vector<T> work_;
-    auto work = new_matrix(work_, k, 1);
+    std::vector<T> work_tr_g2r_;
+    auto work_tr_g2r = new_matrix(work_tr_g2r_, k, 1);
 
     if (k > n)
         larf_work(LEFT_SIDE, COLUMNWISE_STORAGE, view_A1, tau[n - 1], view_A0,
-                  view_block_A1, work);
+                  view_block_A1, work_tr_g2r);
 
     for (idx_t j = 0; j < n - 1; j++)
         A0(j, n - 1) = 0.;
@@ -62,12 +63,12 @@ void trge_ung2r(matrix_t& A0, matrix_t& A1, vector_t& tau)
     A0(n - 1, n - 1) = T(1) - tau[n - 1];
 
     for (idx_t i = n - 1; i-- > 0;) {
-        auto view_A1 = slice(A1, range{0, m}, i);
+        auto view_A1 = slice(A1, range{0, n}, i);
         auto view_A0 = slice(A0, i, range{i + 1, k});
-        auto view_block_A1 = slice(A1, range{0, m}, range{i + 1, k});
+        auto view_block_A1 = slice(A1, range{0, n}, range{i + 1, k});
 
         larf_work(LEFT_SIDE, COLUMNWISE_STORAGE, view_A1, tau[i], view_A0,
-                  view_block_A1, work);
+                  view_block_A1, work_tr_g2r);
 
         for (idx_t j = 0; j < i; j++)
             A0(j, i) = 0.;
@@ -75,5 +76,4 @@ void trge_ung2r(matrix_t& A0, matrix_t& A1, vector_t& tau)
         A0(i, i) = T(1) - tau[i];
     }
 }
-
-#endif  // TLAPACK_TRGE_UNG2R_HH
+#endif

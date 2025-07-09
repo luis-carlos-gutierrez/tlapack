@@ -31,6 +31,26 @@ add_custom_command(
     && echo ""
 )
 
+# add the example geqrtr_dirty
+add_subdirectory( geqrtr_dirty )
+add_custom_command(
+  OUTPUT run-all-examples-cmd APPEND
+  COMMAND
+    echo "- example_geqrtr_dirty ----------------" &&
+    "${CMAKE_CURRENT_BINARY_DIR}/geqrtr_dirty/example_geqrtr_dirty${CMAKE_EXECUTABLE_SUFFIX}"
+    && echo ""
+)
+
+# add the example geqrtt
+add_subdirectory( geqrtt )
+add_custom_command(
+  OUTPUT run-all-examples-cmd APPEND
+  COMMAND
+    echo "- example_geqrtt ----------------" &&
+    "${CMAKE_CURRENT_BINARY_DIR}/geqrtt/example_geqrtt${CMAKE_EXECUTABLE_SUFFIX}"
+    && echo ""
+)
+
 # add the example laed4
 # add_subdirectory( laed4 )
 # add_custom_command(
