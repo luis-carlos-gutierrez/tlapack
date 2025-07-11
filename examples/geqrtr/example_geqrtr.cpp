@@ -178,23 +178,22 @@ void run(size_t m, size_t n, size_t k)
     std::cout << "\n\n(||QQ.H*CC_copy - CC||_F) / ||CC|| = "
               << lange(FROB_NORM, CC) / normC;
 
-    // 2.5) Compute ||Qᴴ Q - I||_F
+    ///////////// START CHECK #2 ///////////
+
+    // 2) Compute ||Qᴴ Q - I||_F
 
     {
-        std::vector<T> work_;
-        auto work = new_matrix(work_, k, k);
-        for (size_t j = 0; j < k; ++j)
-            for (size_t i = 0; i < k; ++i)
-                work(i, j) = static_cast<float>(0xABADBABE);
+        std::vector<T> I_;
+        auto I = new_matrix(I_, k, k);
 
-        // work receives the identity n*n
-        laset(UPPER_TRIANGLE, 0.0, 1.0, work);
+        // I receives the identity n*n
+        laset(UPPER_TRIANGLE, real_t(0.0), real_t(1.0), I);
 
-        // work receives QᴴQ - I
-        herk(Uplo::Upper, Op::ConjTrans, real_t(1.0), QQ, real_t(-1.0), work);
+        // QᴴQ - I -> I
+        herk(UPPER_TRIANGLE, CONJ_TRANS, real_t(1.0), QQ, real_t(-1.0), I);
 
-        // Compute ||QᴴQ - I||_F
-        real_t norm_orth = lanhe(FROB_NORM, UPPER_TRIANGLE, work);
+        // Compute ||QᴴQ - I||_F        
+        real_t norm_orth = lanhe(FROB_NORM, UPPER_TRIANGLE, I);
 
         std::cout << "\n\n||Qᴴ Q - I||_F = " << norm_orth;
     }
